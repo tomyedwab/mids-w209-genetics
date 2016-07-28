@@ -32,7 +32,7 @@ const COLOR_TABLE = {};
     })
 })();
 
-function layout_linear(chromosome, locations, scale) {
+function layout_chromosome(chromosome, locations, y, scale) {
     const quads = {};
     const anchors = {};
 
@@ -41,32 +41,30 @@ function layout_linear(chromosome, locations, scale) {
 
     var r = (CHROM_WIDTH * scale) / 2;
     var pad = 10 * scale;
-    var curY = 0;
+    var curY = y + pad;
 
     quads[FILL_LT] = quads[FILL_LT] || [];
     quads[FILL_LT].push([
-        [r * -1.000, pad - (r * 0.000)], [r * -0.995, pad - (r * 0.098)],
-        [r * -0.981, pad - (r * 0.195)], [r * -0.957, pad - (r * 0.290)],
-        [r * -0.924, pad - (r * 0.383)], [r * -0.882, pad - (r * 0.471)],
-        [r * -0.831, pad - (r * 0.556)], [r * -0.773, pad - (r * 0.634)],
-        [r * -0.707, pad - (r * 0.707)], [r * -0.634, pad - (r * 0.773)],
-        [r * -0.556, pad - (r * 0.831)], [r * -0.471, pad - (r * 0.882)],
-        [r * -0.383, pad - (r * 0.924)], [r * -0.290, pad - (r * 0.957)],
-        [r * -0.195, pad - (r * 0.981)], [r * -0.098, pad - (r * 0.995)],
-        [r * 0.000, pad - (r * 1.000)], [r * 0.098, pad - (r * 0.995)],
-        [r * 0.195, pad - (r * 0.981)], [r * 0.290, pad - (r * 0.957)],
-        [r * 0.383, pad - (r * 0.924)], [r * 0.471, pad - (r * 0.882)],
-        [r * 0.556, pad - (r * 0.831)], [r * 0.634, pad - (r * 0.773)],
-        [r * 0.707, pad - (r * 0.707)], [r * 0.773, pad - (r * 0.634)],
-        [r * 0.831, pad - (r * 0.556)], [r * 0.882, pad - (r * 0.471)],
-        [r * 0.924, pad - (r * 0.383)], [r * 0.957, pad - (r * 0.290)],
-        [r * 0.981, pad - (r * 0.195)], [r * 0.995, pad - (r * 0.098)],
-        [r * 1.000, pad - (r * 0.000)]
+        [r * -1.000, curY - (r * 0.000)], [r * -0.995, curY - (r * 0.098)],
+        [r * -0.981, curY - (r * 0.195)], [r * -0.957, curY - (r * 0.290)],
+        [r * -0.924, curY - (r * 0.383)], [r * -0.882, curY - (r * 0.471)],
+        [r * -0.831, curY - (r * 0.556)], [r * -0.773, curY - (r * 0.634)],
+        [r * -0.707, curY - (r * 0.707)], [r * -0.634, curY - (r * 0.773)],
+        [r * -0.556, curY - (r * 0.831)], [r * -0.471, curY - (r * 0.882)],
+        [r * -0.383, curY - (r * 0.924)], [r * -0.290, curY - (r * 0.957)],
+        [r * -0.195, curY - (r * 0.981)], [r * -0.098, curY - (r * 0.995)],
+        [r * 0.000, curY - (r * 1.000)], [r * 0.098, curY - (r * 0.995)],
+        [r * 0.195, curY - (r * 0.981)], [r * 0.290, curY - (r * 0.957)],
+        [r * 0.383, curY - (r * 0.924)], [r * 0.471, curY - (r * 0.882)],
+        [r * 0.556, curY - (r * 0.831)], [r * 0.634, curY - (r * 0.773)],
+        [r * 0.707, curY - (r * 0.707)], [r * 0.773, curY - (r * 0.634)],
+        [r * 0.831, curY - (r * 0.556)], [r * 0.882, curY - (r * 0.471)],
+        [r * 0.924, curY - (r * 0.383)], [r * 0.957, curY - (r * 0.290)],
+        [r * 0.981, curY - (r * 0.195)], [r * 0.995, curY - (r * 0.098)],
+        [r * 1.000, curY - (r * 0.000)]
     ]);
-    anchors[chromosome.name + "pter"] = [-r, pad];
-    anchors[chromosome.name + "p"] = [-r, pad];
-
-    curY += pad;
+    anchors[chromosome.name + "pter"] = [-r, curY];
+    anchors[chromosome.name + "p"] = [-r, curY];
 
     for (idx = chromosome.pRegions.length - 1; idx >= 0; idx--) {
         const region = chromosome.pRegions[idx];
@@ -172,39 +170,111 @@ function layout_linear(chromosome, locations, scale) {
 
     return {
         quads: quads,
+        lines: [],
         anchors: anchors,
-        text: [0, curY + (20 * scale)],
-        length: curY + (30 * scale)
+        text: [0, y - (10 * scale)],
+        length: (curY - y) + (30 * scale)
     };
 }
 
-function layout_transform(layout, fn) {
-    const new_layout = {
-        quads: {},
-        anchors: {},
-        text: fn(layout.text),
-        length: layout.length
+function layout_disease(layouts, disease, offset) {
+    const getLocation = function(location) {
+        const locationName = location.slice(0, 3).join("");
+        if (layouts[location[0]] &&
+            layouts[location[0]].anchors[locationName]) {
+            return layouts[location[0]].anchors[locationName];
+        }
+        console.log("Couldn't find location", locationName)
+        return null;
+    };
+
+    const lines = [];
+    let x = 0;
+    let minY = 99999999, maxY = 0;
+    for (let i = 0; i < disease.genes.length; i++) {
+        const location = getLocation(disease.genes[i].location);
+        if (location) {
+            x = location[0] - offset;
+            if (location[1] < minY) { minY = location[1]; }
+            if (location[1] > maxY) { maxY = location[1]; }
+
+            lines.push([location, [x, location[1]]]);
+        }
     }
-    for (var color in layout.quads) {
-        new_layout.quads[color] = layout.quads[color].map(quad => quad.map(fn));
+
+    if (maxY > minY) {
+        const connector = [];
+        for (let y = minY; y < maxY; y += 5) {
+            connector.push([x, y]);
+        }
+        connector.push([x, maxY]);
+        lines.push(connector);
     }
-    for (var anchorName in layout.anchors) {
-        new_layout.anchors[anchorName] = fn(layout.anchors[anchorName]);
-    }
-    return new_layout;
+
+    return {
+        quads: [],
+        lines: lines,
+        anchors: [],
+        text: [0, 0],
+        length: 0
+    };
 }
 
-function layout_translate(layout, x, y) {
-    return layout_transform(layout, point => [point[0] + x, point[1] + y]);
+function layout_transform(layouts, fn) {
+    for (var chromosome in layouts) {
+        const layout = layouts[chromosome];
+        const new_layout = {
+            quads: {},
+            lines: layout.lines.map(line => line.map(fn)),
+            anchors: {},
+            text: fn(layout.text),
+            length: layout.length
+        }
+        for (var color in layout.quads) {
+            new_layout.quads[color] = layout.quads[color].map(quad => quad.map(fn));
+        }
+        for (var anchorName in layout.anchors) {
+            new_layout.anchors[anchorName] = fn(layout.anchors[anchorName]);
+        }
+        layouts[chromosome] = new_layout;
+    }
 }
 
-function layout_radial(layout, x, y, thetaScale, startRadius, radiusSkew) {
-    const invScale = 0.5 / thetaScale;
-    const invSkew = radiusSkew * invScale;
-    return layout_transform(layout, point => [
-        x + (Math.cos(Math.PI * point[1] * invScale) * (startRadius + point[0] + (invSkew * point[1]))),
-        y + (Math.sin(Math.PI * point[1] * invScale) * (startRadius + point[0] + (invSkew * point[1])))
-    ]);
+// theta(y) = f(y), theta(0) = 0
+// r(theta) = R - R'*theta
+// dtheta/dy = 1 / (R^2 - 2*R'*theta + R'^2*theta^2)
+// p(y) = <r * cos(theta), r * sin(theta)>
+const START_THETA = -0.9;
+const RADIAL_R = 390;
+const RADIAL_RPRIME = -14.0;
+// Map of [theta, r, theta]
+const RADIAL_MAP = [[START_THETA, RADIAL_R]];
+function get_radial(y) {
+    let theta = RADIAL_MAP[RADIAL_MAP.length-1][0];
+    const index = Math.max(Math.floor(y), 0);
+    while (RADIAL_MAP.length < index + 2) {
+        const dTheta = 1.0 / (RADIAL_R + (RADIAL_RPRIME * theta));
+        theta += dTheta;
+        const r = RADIAL_R + (RADIAL_RPRIME * theta);
+        RADIAL_MAP.push([theta, r])
+    }
+    const interp = y - index;
+    return {
+        theta: (RADIAL_MAP[index][0] * (1-interp)) + (RADIAL_MAP[index+1][0] * interp),
+        r: (RADIAL_MAP[index][1] * (1-interp)) + (RADIAL_MAP[index+1][1] * interp)
+    };
+}
+
+function layout_radial(layouts, x, y) {
+    layout_transform(layouts, point => {
+        const radial = get_radial(point[1]);
+        const cos = Math.cos(radial.theta);
+        const sin = Math.sin(radial.theta);
+        return [
+            x + ((radial.r + point[0]) * cos),
+            y + ((radial.r + point[0]) * sin)
+        ];
+    });
 }
 
 function layout_to_paths(layout) {
@@ -232,7 +302,7 @@ class Chromosome extends Component {
             {quads}
             <text
                 textAnchor="middle"
-                transform={"translate(" + this.props.layout.text.join(",") + ")"}
+                transform={"translate(" + this.props.layout.text[0] + "," + (this.props.layout.text[1]+5) + ")"}
             >
                 {chromosome.name}
             </text>
@@ -241,37 +311,15 @@ class Chromosome extends Component {
 }
 
 class Disease extends Component {
-    getLocation(location) {
-        const locationName = location.slice(0, 3).join("");
-        if (this.props.layouts[location[0]] &&
-            this.props.layouts[location[0]].anchors[locationName]) {
-            return this.props.layouts[location[0]].anchors[locationName];
-        }
-        console.log("Couldn't find location", locationName)
-        return null;
-    }
-
     render() {
-        const lines = [];
-        const locations = [];
-        for (let i = 0; i < this.props.disease.genes.length; i++) {
-            const location = this.getLocation(this.props.disease.genes[i].location);
-            if (location) {
-                locations.push(location);
-            }
-        }
-        for (let i = 0; i < locations.length; i++) {
-            for (let j = i + 1; j < locations.length; j++) {
-                const d = "M " + locations[i].join(" ") + " Q " + this.props.center.join(" ") + " " + locations[j].join(" ");
-                lines.push(<path
-                    d={d}
-                    fill="none"
-                    opacity={0.05}
-                    stroke={COLOR_TABLE[this.props.disease.class]}
-                    strokeWidth={1}
-                />);
-            }
-        }
+        const lines = this.props.layout.lines.map(line => <path
+            d={"M " + line[0].join(" ") + " L " + line.slice(1).map(point => point.join(" ")).join(" ")}
+            fill="none"
+            opacity={0.1}
+            stroke={COLOR_TABLE[this.props.disease.class]}
+            strokeWidth={1}
+        />);
+
         return <g>{lines}</g>;
     }
 }
@@ -282,37 +330,45 @@ class App extends Component {
     }
 
     render() {
-        const children = [];
         const layouts = {};
-        let y = 0;
+        let y = 20;
         CHROMOSOMES.forEach(chromosome => {
-            const layout = layout_radial(
-                layout_translate(
-                    layout_linear(chromosome, this.state.showLocations, 1.0),
-                    0, y),
-                600.0, 400.0, 500.0, 390.0, -20.0);
+            const chromoLayout = layout_chromosome(
+                chromosome, this.state.showLocations, y, 1.0);
+            y += chromoLayout.length + 10;
 
+            layouts[chromosome.name] = chromoLayout;
+        });
+
+        let offset = 5;
+        DISEASEOME.forEach(disease => {
+            layouts["D" + disease.name] = layout_disease(layouts, disease, (disease.genes.length > 1) ? offset : 3);
+            if (disease.genes.length > 1) {
+                offset += 0.13;
+            }
+        });
+
+        layout_radial(layouts, 380.0, 360.0);
+
+        console.log(RADIAL_MAP);
+
+        const children = [];
+        CHROMOSOMES.forEach(chromosome => {
             children.push(<Chromosome
                 chromosome={chromosome}
-                layout={layout}
-                x={0}
-                y={y}
+                layout={layouts[chromosome.name]}
             />);
-
-            layouts[chromosome.name] = layout;
-
-            y += layout.length + 10;
         });
         const diseases = DISEASEOME.map(
             disease => <Disease
                 center={[600.0, 400.0]}
                 disease={disease}
-                layouts={layouts}
+                layout={layouts["D" + disease.name]}
             />);
 
         return (
-            <div className="App" style={{display: "flex"}}>
-                <svg width="1200" height="800">
+            <div className="App" style={{display: "flex", height: "100%", width: "100%", position: "fixed"}}>
+                <svg viewBox="0 0 800 760" style={{height: "100%", margin: "auto"}}>
                     {children}
                     {diseases}
                 </svg>
