@@ -6,7 +6,6 @@ import { DISEASEOME } from './diseaseome.js';
 
 const RAND = [3, 3, 4, 4, 3, 5, 4, 4, 5, 5, 3, 5, 3, 5, 5, 4, 5, 3, 3, 3, 5, 4, 4, 5, 3, 5, 3, 5, 3, 5, 3, 3, 4, 4, 3, 3, 5, 3, 3, 3, 3, 5, 3, 4, 5, 5, 3, 5, 4, 3, 4, 5, 5, 4, 3, 5, 4, 4, 4, 5, 4, 4, 3, 4, 4, 3, 4, 4, 5, 4, 5, 4, 3, 3, 4, 5, 3, 3, 5, 4, 5, 5, 3, 5, 3, 3, 5, 3, 4, 5, 5, 4, 3, 5, 5, 3, 5, 4, 4, 3];
 
-
 const CHROM_WIDTH = 20.0;
 const FILL_WT = "#efefef";
 const FILL_LT = "#cfcfcf";
@@ -14,27 +13,29 @@ const FILL_MD = "#afafaf";
 const FILL_DK = "#7f7f7f";
 const FILL_BK = "#4f4f4f";
 const FILL_X = "#000080";
-const FILL_SEL = "#900000";
 
+const DISEASE_CLASSES = {};
 const COLOR_TABLE = {};
+
 (function() {
     const COLORS = [
         "#cee6ca", "#90cfce", "#68becf", "#3d96c1", "#3371a9", "#254a92", "#19257b", "#131a55",
-        "#fdec7c", "#f9d464", "#f2b153", "#ec8f42", "#e66b32", "#d34e26", "#99442a", "#5a362d",
+        "#5a362d", "#99442a", "#d34e26", "#e66b32", "#ec8f42", "#f2b153", "#f9d464", "#fdec7c",
         "#f8c0a7", "#ef8f97", "#e85f89", "#c04389", "#8e2f91", "#63218f", "#4a166b", "#321049"
     ];
 
+    const comp = (a, b) => (a.class < b.class) ? -1 : ((a.class > b.class) ? 1 : 0);
+    DISEASEOME.sort(comp);
+
     let index = 0;
     DISEASEOME.forEach(disease => {
+        DISEASE_CLASSES[disease.class] = DISEASE_CLASSES[disease.class] || [];
+        DISEASE_CLASSES[disease.class].push(disease);
+
         if (!COLOR_TABLE[disease.class]) {
             COLOR_TABLE[disease.class] = COLORS[index++];
         }
-    })
-})();
-
-(function() {
-    const comp = (a, b) => (a.class < b.class) ? -1 : ((a.class > b.class) ? 1 : 0);
-    DISEASEOME.sort(comp);
+    });
 })();
 
 var CSSSheet = (function() {
@@ -203,47 +204,21 @@ function layout_chromosome(chromosome, y, scale) {
     };
 }
 
-function layout_disease(layouts, disease, offset) {
-    const getLocation = function(location) {
+function layout_disease(layouts, layout, disease, offset) {
+    const color = COLOR_TABLE[disease.class];
+    layout.quads[color] = layout.quads[color] || [];
+    for (let i = 0; i < disease.genes.length; i++) {
+        const location = disease.genes[i].location;
         const locationName = location.slice(0, 3).join("");
         if (layouts[location[0]] &&
-            layouts[location[0]].anchors[locationName]) {
-            return layouts[location[0]].anchors[locationName];
+            layouts[location[0]].map[locationName]) {
+            layouts[location[0]].map[locationName].forEach(quadInfo => {
+                const quad = layouts[location[0]].quads[quadInfo[0]][quadInfo[1]];
+                layout.quads[color].push(quad.map(point => [(point[0] / 8) + offset, point[1]]));
+            })
+        } else {
+            console.log("Couldn't find location", locationName);
         }
-        console.log("Couldn't find location", locationName)
-        return null;
-    };
-
-    const lines = [];
-    let x = 0;
-    let minY = 99999999, maxY = 0;
-    for (let i = 0; i < disease.genes.length; i++) {
-        const location = getLocation(disease.genes[i].location);
-        if (location) {
-            x = location[0] - offset;
-            if (location[1] < minY) { minY = location[1]; }
-            if (location[1] > maxY) { maxY = location[1]; }
-
-            lines.push([location, [x, location[1]]]);
-        }
-    }
-
-    if (maxY > minY) {
-        const connector = [];
-        for (let y = minY; y < maxY; y += 5) {
-            connector.push([x, y]);
-        }
-        connector.push([x, maxY]);
-        lines.push(connector);
-    }
-
-    return {
-        quads: [],
-        lines: lines,
-        map: {},
-        anchors: [],
-        text: [0, 0],
-        length: 0
     };
 }
 
@@ -268,22 +243,19 @@ function layout_transform(layouts, fn) {
     }
 }
 
-// theta(y) = f(y), theta(0) = 0
-// r(theta) = R - R'*theta
-// dtheta/dy = 1 / (R^2 - 2*R'*theta + R'^2*theta^2)
-// p(y) = <r * cos(theta), r * sin(theta)>
 const START_THETA = -0.9;
-const RADIAL_R = 390;
-const RADIAL_RPRIME = -14.0;
+const RADIAL_R = 360;
+const RADIAL_RPRIME = -11.3;
 // Map of [theta, r, theta]
 const RADIAL_MAP = [[START_THETA, RADIAL_R]];
 function get_radial(y) {
     let theta = RADIAL_MAP[RADIAL_MAP.length-1][0];
+    let r = RADIAL_MAP[RADIAL_MAP.length-1][1];
     const index = Math.max(Math.floor(y), 0);
     while (RADIAL_MAP.length < index + 2) {
-        const dTheta = 1.0 / (RADIAL_R + (RADIAL_RPRIME * theta));
+        const dTheta = 1.0 / r;
         theta += dTheta;
-        const r = RADIAL_R + (RADIAL_RPRIME * theta);
+        r += RADIAL_RPRIME * dTheta;
         RADIAL_MAP.push([theta, r])
     }
     const interp = y - index;
@@ -293,14 +265,14 @@ function get_radial(y) {
     };
 }
 
-function layout_radial(layouts, x, y) {
+function layout_radial(layouts, x, y, xOffset) {
     layout_transform(layouts, point => {
         const radial = get_radial(point[1]);
         const cos = Math.cos(radial.theta);
         const sin = Math.sin(radial.theta);
         return [
-            x + ((radial.r + point[0]) * cos),
-            y + ((radial.r + point[0]) * sin)
+            x + ((radial.r + point[0] + xOffset) * cos),
+            y + ((radial.r + point[0] + xOffset) * sin)
         ];
     });
 }
@@ -315,7 +287,7 @@ function layout_to_paths(layout) {
                     point => point[0] + " " + point[1]).join(" ")) +
                 " Z ")
             .join(" ");
-        ret.push(<path d={d} fill={color} />);
+        ret.push(<path key={color} d={d} fill={color} />);
     }
     return ret;
 }
@@ -331,15 +303,23 @@ const FINAL_LAYOUTS = {};
         FINAL_LAYOUTS[chromosome.name] = chromoLayout;
     });
 
-    let offset = 5;
+    let offset = 8;
     DISEASEOME.forEach(disease => {
-        FINAL_LAYOUTS["D" + disease.name] = layout_disease(FINAL_LAYOUTS, disease, (disease.genes.length > 1) ? offset : 3);
-        if (disease.genes.length > 1) {
-            offset += 0.13;
+        if (!FINAL_LAYOUTS["D" + disease.class]) {
+            FINAL_LAYOUTS["D" + disease.class] = {
+                quads: {},
+                lines: [],
+                map: {},
+                anchors: [],
+                text: [0, 0],
+                length: 0
+            };
+            offset += 1.6;
         }
+        layout_disease(FINAL_LAYOUTS, FINAL_LAYOUTS["D" + disease.class], disease, offset)
     });
 
-    layout_radial(FINAL_LAYOUTS, 380.0, 360.0);
+    layout_radial(FINAL_LAYOUTS, 380.0, 360.0, 10);
 })();
 
 class Chromosome extends Component {
@@ -364,17 +344,12 @@ function sanitizeName(name) {
     return name.toLowerCase().replace(new RegExp('[^a-z]', 'g'), "_");
 }
 
-class Disease extends Component {
+class DiseaseClass extends Component {
     render() {
-        const lines = this.props.layout.lines.map(line => <path
-            d={"M " + line[0].join(" ") + " L " + line.slice(1).map(point => point.join(" ")).join(" ")}
-            fill="none"
-            stroke={COLOR_TABLE[this.props.disease.class]}
-            strokeWidth={1}
-        />);
+        const quads = layout_to_paths(this.props.layout);
 
-        return <g id={"DIS_" + sanitizeName(this.props.disease.name)}>
-            {lines}
+        return <g id={"DIS_" + sanitizeName(this.props.className)}>
+            {quads}
         </g>;
     }
 }
@@ -464,6 +439,7 @@ class DiseaseList extends Component {
                 lists.push(list);
 
                 list.push(<li
+                    key={disease.class}
                     onMouseEnter={() => this.handleMouseEnterClass(disease.class)}
                     onMouseLeave={() => this.handleMouseLeaveClass(disease.class)}
                     style={style}
@@ -487,6 +463,7 @@ class DiseaseList extends Component {
                 style.backgroundColor = "#daa";
             }
             list.push(<li
+                key={disease.name}
                 onMouseEnter={() => this.handleMouseEnterDisease(disease)}
                 onMouseLeave={() => this.handleMouseLeaveDisease(disease)}
                 style={style}
@@ -495,15 +472,19 @@ class DiseaseList extends Component {
             </li>);
         })
         return <div>
-            {lists.map(items => <ul style={{padding: 0}}>
+            {lists.map((items, idx) => <ul style={{padding: 0}} key={idx}>
                 {items}
             </ul>)}
         </div>;
     }
 
     componentDidUpdate() {
-        while (CSSSheet.rules.length > 0) {
-            CSSSheet.removeRule(0);
+        while (CSSSheet.cssRules.length > 0) {
+            if (CSSSheet.deleteRule) {
+                CSSSheet.deleteRule(0);
+            } else {
+                CSSSheet.removeRule(0);
+            }
         }
         const namesToHighlight = [];
 
@@ -522,10 +503,12 @@ class DiseaseList extends Component {
         namesToHighlight.forEach(name => {
             CSSSheet.insertRule(
                 "g#DIS_" + name + " path "
-                + "{ opacity: 0.9; stroke-width: 4; stroke-linecap: round; }");
+                + "{ opacity: 0.9; stroke-width: 4; stroke-linecap: round; }",
+                0);
             CSSSheet.insertRule(
                 "g#DISG_" + name + " path "
-                + "{ opacity: 0.9;  }");
+                + "{ opacity: 0.9;  }",
+                0);
         });
     }
 }
@@ -538,37 +521,44 @@ class App extends Component {
         CHROMOSOMES.forEach(chromosome => {
             chromosomes.push(<Chromosome
                 chromosome={chromosome}
+                key={chromosome.name}
                 layout={FINAL_LAYOUTS[chromosome.name]}
             />);
         });
-        const diseases = DISEASEOME.map(
-            disease => <Disease
+        const diseases = [];
+        for (let className in DISEASE_CLASSES) {
+            diseases.push(<DiseaseClass
                 center={[600.0, 400.0]}
-                disease={disease}
-                layout={FINAL_LAYOUTS["D" + disease.name]}
+                className={className}
+                key={className}
+                layout={FINAL_LAYOUTS["D" + className]}
             />);
+        }
 
+        /*
         const diseaseGenes = DISEASEOME.map(
             disease => <DiseaseGenes
+                allLayouts={FINAL_LAYOUTS}
                 center={[600.0, 400.0]}
                 disease={disease}
+                key={disease.name}
                 layout={FINAL_LAYOUTS["D" + disease.name]}
-                allLayouts={FINAL_LAYOUTS}
             />);
+            */
 
         return (
             <div className="App" style={{display: "flex", height: "100%", width: "100%", position: "fixed"}}>
-                <div style={{padding: 10, overflowY: "auto", width: "30%"}}>
+                <div style={{padding: 10, overflowY: "auto", width: "30%"}} key="diseaseList">
                     <DiseaseList />
                 </div>
-                <svg viewBox="0 0 800 760" style={{height: "100%", margin: "auto"}}>
+                <svg viewBox="0 0 800 760" style={{height: "100%", margin: "auto"}} key="svg">
                     {chromosomes}
                     <g id="diseases">
                         {diseases}
                     </g>
-                    <g id="disease-genes">
+                    {/*<g id="disease-genes">
                         {diseaseGenes}
-                    </g>
+                    </g>*/}
                 </svg>
             </div>
         );

@@ -2,7 +2,7 @@ import csv
 import json
 import re
 
-data = []
+data = {}
 classes = set()
 
 with open("diseaseome.tsv", "rb") as tsvin:
@@ -55,20 +55,19 @@ with open("diseaseome.tsv", "rb") as tsvin:
 
         classes.add(gclass)
 
-        if name != last_disease:
-            data.append({
+        if name not in data:
+            data[name] = {
                 "name": name,
                 "genes": [],
                 "class": gclass
-            })
-            last_disease = name
+            }
 
-        data[-1]["genes"].append({
+        data[name]["genes"].append({
             "location": list(matches.groups()),
             "names": genes.split(", "),
         })
 
 with open("../src/diseaseome.js", "w") as out:
-    out.write("export const DISEASEOME = %s;" % json.dumps(data))
+    out.write("export const DISEASEOME = %s;" % json.dumps(data.values()))
 
 print "%d classes: %s" % (len(classes), classes)
