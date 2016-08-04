@@ -322,6 +322,43 @@ const FINAL_LAYOUTS = {};
     layout_radial(FINAL_LAYOUTS, 380.0, 360.0, 10);
 })();
 
+class Header extends Component {
+    state = {
+        expanded: true
+    }
+
+    render() {
+        return <div
+            className={"header " + (this.state.expanded ? "open" : "closed")}
+        >
+            <button
+                className="showButton"
+                onClick={() => this.setState({expanded: true})}
+            >
+                [show introduction]
+            </button>
+            <div className="title">Genetics and Disease</div>
+            <div className="description">
+                <p>The human genome includes 24 distinct chromosomes, comprising
+                22 autosomal pairs and 2 sex-linked, X/Y chromsomes. Although
+                there is an estimated 20-25,000 protein-encoding genes in the
+                genome, just over 15000 genes have been mapped to chromosome
+                locations, with 12,000 of those genes linked to over 7000
+                genetic disorders.</p>
+                <p>This interactive visualization displays the chromosome
+                locations of the genes responsible for the most common
+                genetic disorders.</p>
+            </div>
+            <button
+                className="hideButton"
+                onClick={() => this.setState({expanded: false})}
+            >
+                Dismiss
+            </button>
+        </div>;
+    }
+}
+
 class Chromosome extends Component {
     render() {
         const chromosome = this.props.chromosome;
@@ -347,8 +384,7 @@ function sanitizeName(name) {
 class DiseaseClass extends Component {
     render() {
         const quads = layout_to_paths(this.props.layout);
-
-        return <g id={"DIS_" + sanitizeName(this.props.className)}>
+        return <g id={"DGRP_" + sanitizeName(this.props.className)}>
             {quads}
         </g>;
     }
@@ -417,64 +453,37 @@ class DiseaseList extends Component {
     }
 
     render() {
-        const lists = [];
-        let lastClass = null;
-        DISEASEOME.forEach(disease => {
-            const color = COLOR_TABLE[disease.class];
-            let list  = lists[lists.length - 1];
-            if (disease.class !== lastClass) {
-                const style = {
-                    borderLeft: "4px solid " + color,
-                    fontWeight: "bold",
-                    listStyle: "none",
-                    padding: 4,
-                    textAlign: "left",
-                };
-                if (this.state.highlightedClass &&
-                    this.state.highlightedClass === disease.class) {
-                    style.backgroundColor = "#daa";
-                }
-
-                list = [];
-                lists.push(list);
-
-                list.push(<li
-                    key={disease.class}
-                    onMouseEnter={() => this.handleMouseEnterClass(disease.class)}
-                    onMouseLeave={() => this.handleMouseLeaveClass(disease.class)}
-                    style={style}
-                >
-                    {disease.class}
-                </li>);
-                lastClass = disease.class;
-            }
-
+        const listElements = [];
+        for (let className in DISEASE_CLASSES) {
+            const color = COLOR_TABLE[className];
             const style = {
-                borderLeft: "4px solid " + color,
-                listStyle: "none",
-                paddingLeft: 16,
-                textAlign: "left",
+                borderLeft: "32px solid " + color
             };
-            if (this.state.highlightedDisease &&
-                this.state.highlightedDisease.name === disease.name) {
-                style.backgroundColor = "#daa";
-            } else if (this.state.highlightedClass &&
-                this.state.highlightedClass === disease.class) {
-                style.backgroundColor = "#daa";
+            if (this.state.highlightedClass &&
+                this.state.highlightedClass === className) {
+                style.backgroundColor = color;
+                style.color = "#fff";
             }
-            list.push(<li
-                key={disease.name}
-                onMouseEnter={() => this.handleMouseEnterDisease(disease)}
-                onMouseLeave={() => this.handleMouseLeaveDisease(disease)}
+            listElements.push(<li
+                key={className}
+                className="columns"
                 style={style}
+                onMouseEnter={() => this.handleMouseEnterClass(className)}
+                onMouseLeave={() => this.handleMouseLeaveClass(className)}
             >
-                {disease.name} ({disease.genes.length})
+                <div className="col1">{className}</div>
+                <div className="col2">{DISEASE_CLASSES[className].length}</div>
             </li>);
-        })
-        return <div>
-            {lists.map((items, idx) => <ul style={{padding: 0}} key={idx}>
-                {items}
-            </ul>)}
+        }
+
+        return <div className="diseaseListWrapper">
+            <div className="heading columns">
+                <div className="col1">Disease class</div>
+                <div className="col2"># of diseases</div>
+            </div>
+            <ul className="diseaseList">
+                {listElements}
+            </ul>
         </div>;
     }
 
@@ -498,6 +507,13 @@ class DiseaseList extends Component {
                     namesToHighlight.push(sanitizeName(disease.name));
                 }
             })
+
+            CSSSheet.insertRule("g#disease-groups path { opacity: 0.1; }", 0);
+
+            CSSSheet.insertRule(
+                "g#DGRP_" + sanitizeName(this.state.highlightedClass) + " path "
+                + "{ opacity: 1.0;  }",
+                1);
         }
 
         namesToHighlight.forEach(name => {
@@ -548,12 +564,13 @@ class App extends Component {
 
         return (
             <div className="App" style={{display: "flex", height: "100%", width: "100%", position: "fixed"}}>
-                <div style={{padding: 10, overflowY: "auto", width: "30%"}} key="diseaseList">
+                <Header />
+                <div className="diseasePane" key="diseaseList">
                     <DiseaseList />
                 </div>
                 <svg viewBox="0 0 800 760" style={{height: "100%", margin: "auto"}} key="svg">
                     {chromosomes}
-                    <g id="diseases">
+                    <g id="disease-groups">
                         {diseases}
                     </g>
                     {/*<g id="disease-genes">
