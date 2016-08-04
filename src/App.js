@@ -19,8 +19,8 @@ const COLOR_TABLE = {};
 
 (function() {
     const COLORS = [
-        "#cee6ca", "#90cfce", "#68becf", "#3d96c1", "#3371a9", "#254a92", "#19257b", "#131a55",
-        "#5a362d", "#99442a", "#d34e26", "#e66b32", "#ec8f42", "#f2b153", "#f9d464", "#fdec7c",
+        "#90cfce", "#68becf", "#3d96c1", "#3371a9", "#254a92", "#19257b", "#131a55",
+        "#5a362d", "#99442a", "#d34e26", "#e66b32", "#ec8f42", "#f2b153",
         "#f8c0a7", "#ef8f97", "#e85f89", "#c04389", "#8e2f91", "#63218f", "#4a166b", "#321049"
     ];
 
@@ -29,6 +29,9 @@ const COLOR_TABLE = {};
 
     let index = 0;
     DISEASEOME.forEach(disease => {
+        if (disease.class === "Unclassified" || disease.class === "multiple") {
+            return;
+        }
         DISEASE_CLASSES[disease.class] = DISEASE_CLASSES[disease.class] || [];
         DISEASE_CLASSES[disease.class].push(disease);
 
