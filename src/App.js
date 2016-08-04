@@ -17,7 +17,7 @@ const FILL_X = "#000080";
 const DISEASE_CLASSES = {};
 const COLOR_TABLE = {};
 
-const classComparator = (a, b) => (a.class < b.class) ? -1 : ((a.class > b.class) ? 1 : 0);
+const classComparator = (a, b) => (a.className < b.className) ? -1 : ((a.className > b.className) ? 1 : 0);
 const prevalenceComparator = (a, b) => (+(a.prevalence || 0) > +(b.prevalence || 0)) ? -1 : ((+(a.prevalence || 0) < +(b.prevalence || 0)) ? 1 : 0);
 
 (function() {
@@ -31,15 +31,15 @@ const prevalenceComparator = (a, b) => (+(a.prevalence || 0) > +(b.prevalence ||
 
     let index = 0;
     DISEASEOME.forEach(disease => {
-        if (disease.class === "Unclassified" || disease.class === "multiple" ||
-            disease.class === "Connective tissue") {
+        if (disease.className === "Unclassified" || disease.className === "multiple" ||
+            disease.className === "Connective tissue") {
             return;
         }
-        DISEASE_CLASSES[disease.class] = DISEASE_CLASSES[disease.class] || [];
-        DISEASE_CLASSES[disease.class].push(disease);
+        DISEASE_CLASSES[disease.className] = DISEASE_CLASSES[disease.className] || [];
+        DISEASE_CLASSES[disease.className].push(disease);
 
-        if (!COLOR_TABLE[disease.class]) {
-            COLOR_TABLE[disease.class] = COLORS[index++];
+        if (!COLOR_TABLE[disease.className]) {
+            COLOR_TABLE[disease.className] = COLORS[index++];
         }
     });
 
@@ -215,7 +215,7 @@ function layout_chromosome(chromosome, y, scale) {
 }
 
 function layout_disease_class(layouts, layout, disease, offset) {
-    const color = COLOR_TABLE[disease.class];
+    const color = COLOR_TABLE[disease.className];
     layout.quads[color] = layout.quads[color] || [];
     for (let i = 0; i < disease.genes.length; i++) {
         const location = disease.genes[i].location;
@@ -233,7 +233,7 @@ function layout_disease_class(layouts, layout, disease, offset) {
 }
 
 function layout_disease(layouts, disease, offset) {
-    const color = COLOR_TABLE[disease.class];
+    const color = COLOR_TABLE[disease.className];
     const layout = {
         quads: {},
         lines: [],
@@ -342,8 +342,8 @@ const FINAL_LAYOUTS = {};
 
     let offset = 8;
     DISEASEOME.forEach(disease => {
-        if (!FINAL_LAYOUTS["DC_" + disease.class]) {
-            FINAL_LAYOUTS["DC_" + disease.class] = {
+        if (!FINAL_LAYOUTS["DC_" + disease.className]) {
+            FINAL_LAYOUTS["DC_" + disease.className] = {
                 quads: {},
                 lines: [],
                 map: {},
@@ -353,7 +353,7 @@ const FINAL_LAYOUTS = {};
             };
             offset += 1.6;
         }
-        layout_disease_class(FINAL_LAYOUTS, FINAL_LAYOUTS["DC_" + disease.class], disease, offset)
+        layout_disease_class(FINAL_LAYOUTS, FINAL_LAYOUTS["DC_" + disease.className], disease, offset)
         FINAL_LAYOUTS["D_" + disease.name] = layout_disease(FINAL_LAYOUTS, disease)
     });
 
@@ -511,7 +511,8 @@ class DiseaseList extends Component {
                 onMouseLeave={() => this.handleMouseLeaveClass(className)}
                 onClick={() => this.handleSelectClass(className)}
             >
-                <div className="col1">{className}</div>
+                {/* Somehow in the minified code, className gets mangled? */}
+                <div className="col1">{"" + className}</div>
                 <div className="col2">{DISEASE_CLASSES[className].length}</div>
             </li>);
         }
@@ -536,7 +537,7 @@ class DiseaseList extends Component {
                 prev = "1 in " + Math.round(1/disease.prevalence);
                 prevPct = 100 * Math.min(1, -1/Math.log(disease.prevalence));
             }
-            const color = COLOR_TABLE[disease.class];
+            const color = COLOR_TABLE[disease.className];
             let barColor = color;
             const style = {};
             if (this.state.highlightedDisease &&
@@ -597,7 +598,7 @@ class DiseaseList extends Component {
 
     renderDiseasesByFilter(filter) {
         const diseases = DISEASEOME.filter(
-            disease => disease.name.indexOf(filter) >= 0);
+            disease => disease.name.toLowerCase().indexOf(filter) >= 0);
         diseases.sort(prevalenceComparator);
 
         const listElements = this.renderDiseases(diseases);
@@ -617,7 +618,8 @@ class DiseaseList extends Component {
 
     render() {
         if (this.state.diseaseFilter !== "") {
-            return this.renderDiseasesByFilter(this.state.diseaseFilter);
+            return this.renderDiseasesByFilter(
+                this.state.diseaseFilter.toLowerCase());
         }
         if (this.state.selectedClass) {
             return this.renderDiseasesByClass(this.state.selectedClass);

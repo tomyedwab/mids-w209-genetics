@@ -66,7 +66,7 @@ with open("diseaseome.tsv", "rb") as tsvin:
             data[id] = {
                 "name": name,
                 "genes": [],
-                "class": gclass,
+                "className": gclass,
                 "prevalence": None,
                 "description": ""
             }

@@ -19,12 +19,12 @@ g#disease-genes path {
     z-index: 10;
 }
 .header.open {
-    height: auto;
+    height: 100%;
     width: auto;
 }
 .header.closed {
     height: 34px;
-    width: 475px;
+    width: 490px;
 }
 
 .header .title {
