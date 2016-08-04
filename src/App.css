@@ -7,6 +7,10 @@ g#disease-genes path {
     transition: opacity 0.5s;
 }
 
+#root {
+    font-family: 'Libre Franklin', sans-serif;
+}
+
 .header {
     background: rgba(255, 255, 255, 0.9);
     overflow: hidden;
@@ -20,10 +24,11 @@ g#disease-genes path {
 }
 .header.closed {
     height: 34px;
-    width: 555px;
+    width: 475px;
 }
 
 .header .title {
+    font-family: 'Fjalla One', sans-serif;
     font-size: 40px;
     font-weight: bold;
 }

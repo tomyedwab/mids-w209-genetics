@@ -386,6 +386,7 @@ class Header extends Component {
                 <p>This interactive visualization displays the chromosome
                 locations of the genes responsible for the most common
                 genetic disorders.</p>
+                <p><i>Created by Ying Chan, Marcus DeMaster, Kevin McLanahan and Tom Yedwab.</i></p>
             </div>
             <button
                 className="hideButton"
