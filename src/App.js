@@ -29,7 +29,8 @@ const COLOR_TABLE = {};
 
     let index = 0;
     DISEASEOME.forEach(disease => {
-        if (disease.class === "Unclassified" || disease.class === "multiple") {
+        if (disease.class === "Unclassified" || disease.class === "multiple" ||
+            disease.class === "Connective tissue") {
             return;
         }
         DISEASE_CLASSES[disease.class] = DISEASE_CLASSES[disease.class] || [];
@@ -39,6 +40,11 @@ const COLOR_TABLE = {};
             COLOR_TABLE[disease.class] = COLORS[index++];
         }
     });
+
+    const comp2 = (a, b) => (+(a.prevalence || 0) > +(b.prevalence || 0)) ? -1 : ((+(a.prevalence || 0) < +(b.prevalence || 0)) ? 1 : 0);
+    for (let className in DISEASE_CLASSES) {
+        DISEASE_CLASSES[className].sort(comp2);
+    }
 })();
 
 var CSSSheet = (function() {
@@ -207,7 +213,7 @@ function layout_chromosome(chromosome, y, scale) {
     };
 }
 
-function layout_disease(layouts, layout, disease, offset) {
+function layout_disease_class(layouts, layout, disease, offset) {
     const color = COLOR_TABLE[disease.class];
     layout.quads[color] = layout.quads[color] || [];
     for (let i = 0; i < disease.genes.length; i++) {
@@ -223,6 +229,33 @@ function layout_disease(layouts, layout, disease, offset) {
             console.log("Couldn't find location", locationName);
         }
     };
+}
+
+function layout_disease(layouts, disease, offset) {
+    const color = COLOR_TABLE[disease.class];
+    const layout = {
+        quads: {},
+        lines: [],
+        map: {},
+        anchors: {},
+        text: [0, 0],
+        length: 0
+    }
+    layout.quads[color] = layout.quads[color] || [];
+    for (let i = 0; i < disease.genes.length; i++) {
+        const location = disease.genes[i].location;
+        const locationName = location.slice(0, 3).join("");
+        if (layouts[location[0]] &&
+            layouts[location[0]].map[locationName]) {
+            layouts[location[0]].map[locationName].forEach(quadInfo => {
+                const quad = layouts[location[0]].quads[quadInfo[0]][quadInfo[1]];
+                layout.quads[color].push(quad.map(point => [point[0] * 1.2, point[1]]));
+            })
+        } else {
+            console.log("Couldn't find location", locationName);
+        }
+    };
+    return layout;
 }
 
 function layout_transform(layouts, fn) {
@@ -308,8 +341,8 @@ const FINAL_LAYOUTS = {};
 
     let offset = 8;
     DISEASEOME.forEach(disease => {
-        if (!FINAL_LAYOUTS["D" + disease.class]) {
-            FINAL_LAYOUTS["D" + disease.class] = {
+        if (!FINAL_LAYOUTS["DC_" + disease.class]) {
+            FINAL_LAYOUTS["DC_" + disease.class] = {
                 quads: {},
                 lines: [],
                 map: {},
@@ -319,7 +352,8 @@ const FINAL_LAYOUTS = {};
             };
             offset += 1.6;
         }
-        layout_disease(FINAL_LAYOUTS, FINAL_LAYOUTS["D" + disease.class], disease, offset)
+        layout_disease_class(FINAL_LAYOUTS, FINAL_LAYOUTS["DC_" + disease.class], disease, offset)
+        FINAL_LAYOUTS["D_" + disease.name] = layout_disease(FINAL_LAYOUTS, disease)
     });
 
     layout_radial(FINAL_LAYOUTS, 380.0, 360.0, 10);
@@ -386,37 +420,16 @@ function sanitizeName(name) {
 
 class DiseaseClass extends Component {
     render() {
-        const quads = layout_to_paths(this.props.layout);
         return <g id={"DGRP_" + sanitizeName(this.props.className)}>
-            {quads}
+            {layout_to_paths(this.props.layout)}
         </g>;
     }
 }
 
 class DiseaseGenes extends Component {
     render() {
-        const genLayout = {
-            quads: {}
-        };
-        const color = COLOR_TABLE[this.props.disease.class];
-        genLayout.quads[color] = [];
-
-        this.props.disease.genes.forEach(gene => {
-            const location = gene.location.slice(0, 3).join("");
-            const quadMap = this.props.allLayouts[gene.location[0]].map[location];
-            if (quadMap) {
-                quadMap.forEach(info => {
-                    genLayout.quads[color].push(
-                        this.props.allLayouts[gene.location[0]]
-                            .quads[info[0]][info[1]]);
-                })
-            }
-        })
-
-        const quads = layout_to_paths(genLayout);
-
-        return <g id={"DISG_" + sanitizeName(this.props.disease.name)}>
-            {quads}
+        return <g id={"DIS_" + sanitizeName(this.props.disease.name)}>
+            {layout_to_paths(this.props.layout)}
         </g>;
     }
 }
@@ -424,7 +437,8 @@ class DiseaseGenes extends Component {
 class DiseaseList extends Component {
     state = {
         highlightedDisease: null,
-        highlightedClass: null
+        highlightedClass: null,
+        selectedClass: null,
     }
 
     handleMouseEnterDisease(disease) {
@@ -441,6 +455,14 @@ class DiseaseList extends Component {
         }
     }
 
+    handleSelectClass(cls) {
+        this.setState({
+            highlightedDisease: null,
+            highlightedClass: null,
+            selectedClass: cls
+        })
+    }
+
     handleMouseEnterClass(cls) {
         this.setState({
             highlightedDisease: null,
@@ -455,7 +477,7 @@ class DiseaseList extends Component {
         }
     }
 
-    render() {
+    renderClasses() {
         const listElements = [];
         for (let className in DISEASE_CLASSES) {
             const color = COLOR_TABLE[className];
@@ -473,6 +495,7 @@ class DiseaseList extends Component {
                 style={style}
                 onMouseEnter={() => this.handleMouseEnterClass(className)}
                 onMouseLeave={() => this.handleMouseLeaveClass(className)}
+                onClick={() => this.handleSelectClass(className)}
             >
                 <div className="col1">{className}</div>
                 <div className="col2">{DISEASE_CLASSES[className].length}</div>
@@ -480,7 +503,7 @@ class DiseaseList extends Component {
         }
 
         return <div className="diseaseListWrapper">
-            <div className="heading columns">
+            <div className="heading columns indented">
                 <div className="col1">Disease class</div>
                 <div className="col2"># of diseases</div>
             </div>
@@ -488,6 +511,74 @@ class DiseaseList extends Component {
                 {listElements}
             </ul>
         </div>;
+    }
+
+    renderDiseases(className) {
+        const color = COLOR_TABLE[className];
+        const listElements = DISEASE_CLASSES[className].map((disease) => {
+            let prev = "";
+            let prevPct = 0;
+            if (disease.prevalence) {
+                prev = "1 in " + Math.round(1/disease.prevalence);
+                prevPct = 100 * Math.min(1, -1/Math.log(disease.prevalence));
+            }
+            let barColor = color;
+            const style = {};
+            if (this.state.highlightedDisease &&
+                this.state.highlightedDisease.name === disease.name) {
+                style.backgroundColor = color;
+                style.color = "#fff";
+                barColor = "#fff";
+            }
+            return <li
+                key={disease.name}
+                className="columns"
+                onMouseEnter={() => this.handleMouseEnterDisease(disease)}
+                onMouseLeave={() => this.handleMouseLeaveDisease(disease)}
+                style={style}
+            >
+                <div className="col0">
+                    <div style={{
+                        backgroundColor: barColor,
+                        height: 18,
+                        position: "absolute",
+                        right: 0,
+                        top: 0,
+                        width: prevPct + "%"
+                    }} />
+                    {prev}
+                </div>
+                <div className="col1">{disease.name}</div>
+                <div className="col2">{disease.genes.length}</div>
+            </li>;
+        });
+
+        return <div className="diseaseListWrapper">
+            <div
+                className="diseaseHeading"
+                style={{backgroundColor: color}}
+            >
+                <button onClick={() => this.handleSelectClass(null)}>
+                    Back
+                </button>
+                {className} diseases
+            </div>
+            <div className="heading columns">
+                <div className="col0">Prevalence</div>
+                <div className="col1">Disease</div>
+                <div className="col2"># of genes</div>
+            </div>
+            <ul className="diseaseList dropped">
+                {listElements}
+            </ul>
+        </div>;
+    }
+
+    render() {
+        if (this.state.selectedClass) {
+            return this.renderDiseases(this.state.selectedClass);
+        }
+        return this.renderClasses();
     }
 
     componentDidUpdate() {
@@ -505,11 +596,11 @@ class DiseaseList extends Component {
                 sanitizeName(this.state.highlightedDisease.name));
 
         } else if (this.state.highlightedClass) {
-            DISEASEOME.forEach(disease => {
+            /*DISEASEOME.forEach(disease => {
                 if (disease.class === this.state.highlightedClass) {
                     namesToHighlight.push(sanitizeName(disease.name));
                 }
-            })
+            })*/
 
             CSSSheet.insertRule("g#disease-groups path { opacity: 0.1; }", 0);
 
@@ -547,23 +638,18 @@ class App extends Component {
         const diseases = [];
         for (let className in DISEASE_CLASSES) {
             diseases.push(<DiseaseClass
-                center={[600.0, 400.0]}
                 className={className}
                 key={className}
-                layout={FINAL_LAYOUTS["D" + className]}
+                layout={FINAL_LAYOUTS["DC_" + className]}
             />);
         }
 
-        /*
         const diseaseGenes = DISEASEOME.map(
             disease => <DiseaseGenes
-                allLayouts={FINAL_LAYOUTS}
-                center={[600.0, 400.0]}
                 disease={disease}
                 key={disease.name}
-                layout={FINAL_LAYOUTS["D" + disease.name]}
+                layout={FINAL_LAYOUTS["D_" + disease.name]}
             />);
-            */
 
         return (
             <div className="App" style={{display: "flex", height: "100%", width: "100%", position: "fixed"}}>
@@ -576,9 +662,9 @@ class App extends Component {
                     <g id="disease-groups">
                         {diseases}
                     </g>
-                    {/*<g id="disease-genes">
+                    <g id="disease-genes">
                         {diseaseGenes}
-                    </g>*/}
+                    </g>
                 </svg>
             </div>
         );

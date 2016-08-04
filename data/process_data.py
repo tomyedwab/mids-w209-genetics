@@ -48,24 +48,61 @@ with open("diseaseome.tsv", "rb") as tsvin:
         location = row[4].split("-")[0]
         matches = re.match(r'(\d+|X|Y)(p|q|cen)(\d\d|ter|)(.\d+|)', location)
         if matches is None:
-            continue
+            if location.startswith("Chr."):
+                match_locations = [location[4:],"","",""]
+            else:
+                print "Invalid location %s" % location
+                continue
+        else:
+            match_locations = list(matches.groups())
 
+        id = row[0]
         genes = row[2]
         gclass = row[5]
 
         classes.add(gclass)
 
-        if name not in data:
-            data[name] = {
+        if id not in data:
+            data[id] = {
                 "name": name,
                 "genes": [],
-                "class": gclass
+                "class": gclass,
+                "prevalence": None,
+                "description": ""
             }
 
-        data[name]["genes"].append({
-            "location": list(matches.groups()),
+        data[id]["genes"].append({
+            "location": match_locations,
             "names": genes.split(", "),
         })
+
+with open("diseaseome_prev.csv", "rU") as csvin:
+    reader = csv.reader(csvin)
+    first = True
+    for row in reader:
+        if first:
+            first = False
+            continue
+        id = row[0]
+        if id not in data:
+            print "diseaseome_prev refers to invalid OMIM ID %s" % id
+            continue
+
+        data[id]["prevalence"] = row[6]
+
+with open("diseaseome_desc.csv", "rU") as csvin:
+    reader = csv.reader(csvin)
+    first = True
+    for row in reader:
+        if first:
+            first = False
+            continue
+        id = row[1]
+        if id not in data:
+            print "diseaseome_desc refers to invalid OMIM ID %s" % id
+            continue
+
+        data[id]["description"] = row[8].decode('utf-8','ignore').encode("utf-8")
 
 with open("../src/diseaseome.js", "w") as out:
     out.write("export const DISEASEOME = %s;" % json.dumps(data.values()))

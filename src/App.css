@@ -1,8 +1,10 @@
 g#disease-groups path {
     opacity: 0.5;
+    transition: opacity 0.5s;
 }
 g#disease-genes path {
-    opacity: 0.1;
+    opacity: 0;
+    transition: opacity 0.5s;
 }
 
 .header {
@@ -62,6 +64,9 @@ g#disease-genes path {
     right: 0;
     top: 22px;
 }
+.diseaseList.dropped {
+    top: 54px;
+}
 .diseaseList li {
     list-style: none;
     margin-left: 6px;
@@ -71,15 +76,37 @@ g#disease-genes path {
 .diseasePane .columns {
     display: flex;
 }
+.diseasePane .diseaseHeading {
+    color: #fff;
+    font-size: 20px;
+    margin-bottom: 6px;
+}
+.diseasePane .diseaseHeading button {
+    background-color: #ccc;
+    border: none;
+    font-size: 14px;
+    margin: 2px 12px;
+    padding: 4px 8px;
+}
+
 .diseasePane .heading.columns {
     font-weight: bold;
-    padding-left: 42px;
+    padding-left: 4px;
     padding-right: 4px;
+}
+.diseasePane .heading.columns.indented {
+    padding-left: 42px;
+}
+.diseasePane .col0 {
+    font-size: 12px;
+    flex: 0 0 100px;
+    margin-right: 10px;
+    position: relative;
 }
 .diseasePane .col1 {
     flex: 1 0 0;
 }
 .diseasePane .col2 {
-    flex: 0 1 110px;
+    flex: 0 0 110px;
     text-align: right;
 }
