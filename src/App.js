@@ -17,6 +17,9 @@ const FILL_X = "#000080";
 const DISEASE_CLASSES = {};
 const COLOR_TABLE = {};
 
+const classComparator = (a, b) => (a.class < b.class) ? -1 : ((a.class > b.class) ? 1 : 0);
+const prevalenceComparator = (a, b) => (+(a.prevalence || 0) > +(b.prevalence || 0)) ? -1 : ((+(a.prevalence || 0) < +(b.prevalence || 0)) ? 1 : 0);
+
 (function() {
     const COLORS = [
         "#90cfce", "#68becf", "#3d96c1", "#3371a9", "#254a92", "#19257b", "#131a55",
@@ -24,8 +27,7 @@ const COLOR_TABLE = {};
         "#f8c0a7", "#ef8f97", "#e85f89", "#c04389", "#8e2f91", "#63218f", "#4a166b", "#321049"
     ];
 
-    const comp = (a, b) => (a.class < b.class) ? -1 : ((a.class > b.class) ? 1 : 0);
-    DISEASEOME.sort(comp);
+    DISEASEOME.sort(classComparator);
 
     let index = 0;
     DISEASEOME.forEach(disease => {
@@ -41,9 +43,8 @@ const COLOR_TABLE = {};
         }
     });
 
-    const comp2 = (a, b) => (+(a.prevalence || 0) > +(b.prevalence || 0)) ? -1 : ((+(a.prevalence || 0) < +(b.prevalence || 0)) ? 1 : 0);
     for (let className in DISEASE_CLASSES) {
-        DISEASE_CLASSES[className].sort(comp2);
+        DISEASE_CLASSES[className].sort(prevalenceComparator);
     }
 })();
 
@@ -439,6 +440,7 @@ class DiseaseList extends Component {
         highlightedDisease: null,
         highlightedClass: null,
         selectedClass: null,
+        diseaseFilter: ""
     }
 
     handleMouseEnterDisease(disease) {
@@ -477,6 +479,17 @@ class DiseaseList extends Component {
         }
     }
 
+    renderSearchBox() {
+        return <div className="search">
+            Filter by name:
+            <input
+                placeholder="Disease name"
+                value={this.state.diseaseFilter}
+                onChange={evt => this.setState({diseaseFilter: evt.target.value})}
+            />
+        </div>;
+    }
+
     renderClasses() {
         const listElements = [];
         for (let className in DISEASE_CLASSES) {
@@ -503,6 +516,7 @@ class DiseaseList extends Component {
         }
 
         return <div className="diseaseListWrapper">
+            {this.renderSearchBox()}
             <div className="heading columns indented">
                 <div className="col1">Disease class</div>
                 <div className="col2"># of diseases</div>
@@ -513,15 +527,15 @@ class DiseaseList extends Component {
         </div>;
     }
 
-    renderDiseases(className) {
-        const color = COLOR_TABLE[className];
-        const listElements = DISEASE_CLASSES[className].map((disease) => {
+    renderDiseases(diseases) {
+        return diseases.map((disease) => {
             let prev = "";
             let prevPct = 0;
             if (disease.prevalence) {
                 prev = "1 in " + Math.round(1/disease.prevalence);
                 prevPct = 100 * Math.min(1, -1/Math.log(disease.prevalence));
             }
+            const color = COLOR_TABLE[disease.class];
             let barColor = color;
             const style = {};
             if (this.state.highlightedDisease &&
@@ -544,7 +558,8 @@ class DiseaseList extends Component {
                         position: "absolute",
                         right: 0,
                         top: 0,
-                        width: prevPct + "%"
+                        width: prevPct + "%",
+                        zIndex: -1
                     }} />
                     {prev}
                 </div>
@@ -552,11 +567,16 @@ class DiseaseList extends Component {
                 <div className="col2">{disease.genes.length}</div>
             </li>;
         });
+    }
+
+    renderDiseasesByClass(className) {
+        const listElements = this.renderDiseases(DISEASE_CLASSES[className]);
 
         return <div className="diseaseListWrapper">
+            {this.renderSearchBox()}
             <div
                 className="diseaseHeading"
-                style={{backgroundColor: color}}
+                style={{backgroundColor: COLOR_TABLE[className]}}
             >
                 <button onClick={() => this.handleSelectClass(null)}>
                     Back
@@ -568,15 +588,38 @@ class DiseaseList extends Component {
                 <div className="col1">Disease</div>
                 <div className="col2"># of genes</div>
             </div>
-            <ul className="diseaseList dropped">
+            <ul className="diseaseList">
+                {listElements}
+            </ul>
+        </div>;
+    }
+
+    renderDiseasesByFilter(filter) {
+        const diseases = DISEASEOME.filter(
+            disease => disease.name.indexOf(filter) >= 0);
+        diseases.sort(prevalenceComparator);
+
+        const listElements = this.renderDiseases(diseases);
+
+        return <div className="diseaseListWrapper">
+            {this.renderSearchBox()}
+            <div className="heading columns">
+                <div className="col0">Prevalence</div>
+                <div className="col1">Disease</div>
+                <div className="col2"># of genes</div>
+            </div>
+            <ul className="diseaseList">
                 {listElements}
             </ul>
         </div>;
     }
 
     render() {
+        if (this.state.diseaseFilter !== "") {
+            return this.renderDiseasesByFilter(this.state.diseaseFilter);
+        }
         if (this.state.selectedClass) {
-            return this.renderDiseases(this.state.selectedClass);
+            return this.renderDiseasesByClass(this.state.selectedClass);
         }
         return this.renderClasses();
     }
@@ -596,12 +639,6 @@ class DiseaseList extends Component {
                 sanitizeName(this.state.highlightedDisease.name));
 
         } else if (this.state.highlightedClass) {
-            /*DISEASEOME.forEach(disease => {
-                if (disease.class === this.state.highlightedClass) {
-                    namesToHighlight.push(sanitizeName(disease.name));
-                }
-            })*/
-
             CSSSheet.insertRule("g#disease-groups path { opacity: 0.1; }", 0);
 
             CSSSheet.insertRule(
