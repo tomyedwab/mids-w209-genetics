@@ -645,11 +645,13 @@ class DiseaseList extends Component {
                 + "{ opacity: 0.9; stroke: rgba(0, 0, 0, 0); stroke-width: 50px; }",
                 0);
 
-        } else if (this.state.highlightedClass) {
+        }
+
+        if (this.state.highlightedClass || this.state.selectedClass) {
             CSSSheet.insertRule("g#disease-groups path { opacity: 0.1; }", 0);
 
             CSSSheet.insertRule(
-                "g#DGRP_" + sanitizeName(this.state.highlightedClass) + " path "
+                "g#DGRP_" + sanitizeName(this.state.highlightedClass || this.state.selectedClass) + " path "
                 + "{ opacity: 1.0;  }",
                 1);
         }
