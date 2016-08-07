@@ -414,6 +414,11 @@ class Chromosome extends Component {
             </text>
         </g>;
     }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        // Never re-render the chromosomes
+        return false;
+    }
 }
 
 function sanitizeName(name) {
@@ -426,6 +431,11 @@ class DiseaseClass extends Component {
             {layout_to_paths(this.props.layout)}
         </g>;
     }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        // Never re-render the classes
+        return false;
+    }
 }
 
 class DiseaseGenes extends Component {
@@ -434,50 +444,16 @@ class DiseaseGenes extends Component {
             {layout_to_paths(this.props.layout)}
         </g>;
     }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        // Never re-render the diseases
+        return false;
+    }
 }
 
 class DiseaseList extends Component {
     state = {
-        highlightedDisease: null,
-        highlightedClass: null,
-        selectedClass: null,
         diseaseFilter: ""
-    }
-
-    handleMouseEnterDisease(disease) {
-        this.setState({
-            highlightedDisease: disease,
-            highlightedClass: null
-        });
-    }
-
-    handleMouseLeaveDisease(disease) {
-        if (this.state.highlightedDisease &&
-            this.state.highlightedDisease.name === disease.name) {
-            this.setState({highlightedDisease: null});
-        }
-    }
-
-    handleSelectClass(cls) {
-        this.setState({
-            highlightedDisease: null,
-            highlightedClass: null,
-            selectedClass: cls
-        })
-    }
-
-    handleMouseEnterClass(cls) {
-        this.setState({
-            highlightedDisease: null,
-            highlightedClass: cls
-        });
-    }
-
-    handleMouseLeaveClass(cls) {
-        if (this.state.highlightedClass &&
-            this.state.highlightedClass === cls) {
-            this.setState({highlightedClass: null});
-        }
     }
 
     renderSearchBox() {
@@ -492,10 +468,10 @@ class DiseaseList extends Component {
     }
 
     renderTooltip() {
-        if (this.state.highlightedDisease &&
-            this.state.highlightedDisease.description.replace(" ", "") !== "") {
+        if (this.props.highlightedDisease &&
+            this.props.highlightedDisease.description.replace(" ", "") !== "") {
             return <div className="tooltip" style={{opacity: 1.0}}>
-                {this.state.highlightedDisease.description}
+                {this.props.highlightedDisease.description}
                 <span className="attribution">[From Wikipedia]</span>
             </div>;
         } else {
@@ -511,19 +487,19 @@ class DiseaseList extends Component {
                 borderLeft: "32px solid " + color
             };
             let clickText = <span />;
-            if (this.state.highlightedClass &&
-                this.state.highlightedClass === className) {
+            if (this.props.highlightedClass &&
+                this.props.highlightedClass === className) {
                 style.backgroundColor = color;
                 style.color = "#fff";
                 clickText = <span className="click">(See diseases...)</span>;
             }
             listElements.push(<li
-                key={className}
+                key={sanitizeName(className)}
                 className="columns"
                 style={style}
-                onMouseEnter={() => this.handleMouseEnterClass(className)}
-                onMouseLeave={() => this.handleMouseLeaveClass(className)}
-                onClick={() => this.handleSelectClass(className)}
+                onMouseEnter={() => this.props.handleMouseEnterClass(className)}
+                onMouseLeave={() => this.props.handleMouseLeaveClass(className)}
+                onClick={() => this.props.handleSelectClass(className)}
             >
                 {/* Somehow in the minified code, className gets mangled? */}
                 <div className="col1">{"" + className} {clickText}</div>
@@ -554,17 +530,17 @@ class DiseaseList extends Component {
             const color = COLOR_TABLE[disease.className];
             let barColor = color;
             const style = {};
-            if (this.state.highlightedDisease &&
-                this.state.highlightedDisease.name === disease.name) {
+            if (this.props.highlightedDisease &&
+                this.props.highlightedDisease.name === disease.name) {
                 style.backgroundColor = color;
                 style.color = "#fff";
                 barColor = "#fff";
             }
             return <li
-                key={disease.name}
+                key={sanitizeName(disease.name)}
                 className="columns"
-                onMouseEnter={() => this.handleMouseEnterDisease(disease)}
-                onMouseLeave={() => this.handleMouseLeaveDisease(disease)}
+                onMouseEnter={() => this.props.handleMouseEnterDisease(disease)}
+                onMouseLeave={() => this.props.handleMouseLeaveDisease(disease)}
                 style={style}
             >
                 <div className="col0">
@@ -595,7 +571,7 @@ class DiseaseList extends Component {
                 className="diseaseHeading"
                 style={{backgroundColor: COLOR_TABLE[className]}}
             >
-                <button onClick={() => this.handleSelectClass(null)}>
+                <button onClick={() => this.props.handleSelectClass(null)}>
                     Back
                 </button>
                 {className} diseases
@@ -637,43 +613,55 @@ class DiseaseList extends Component {
             return this.renderDiseasesByFilter(
                 this.state.diseaseFilter.toLowerCase());
         }
-        if (this.state.selectedClass) {
-            return this.renderDiseasesByClass(this.state.selectedClass);
+        if (this.props.selectedClass) {
+            return this.renderDiseasesByClass(this.props.selectedClass);
         }
         return this.renderClasses();
-    }
-
-    componentDidUpdate() {
-        while (CSSSheet.cssRules.length > 0) {
-            if (CSSSheet.deleteRule) {
-                CSSSheet.deleteRule(0);
-            } else {
-                CSSSheet.removeRule(0);
-            }
-        }
-
-        if (this.state.highlightedDisease) {
-            const name = sanitizeName(this.state.highlightedDisease.name);
-            CSSSheet.insertRule(
-                "g#DIS_" + name + " path "
-                + "{ opacity: 0.9; stroke: rgba(0, 0, 0, 0); stroke-width: 50px; }",
-                0);
-
-        }
-
-        if (this.state.highlightedClass || this.state.selectedClass) {
-            CSSSheet.insertRule("g#disease-groups path { opacity: 0.1; }", 0);
-
-            CSSSheet.insertRule(
-                "g#DGRP_" + sanitizeName(this.state.highlightedClass || this.state.selectedClass) + " path "
-                + "{ opacity: 1.0;  }",
-                1);
-        }
     }
 }
 
 class App extends Component {
-    state = {}
+    state = {
+        highlightedDisease: null,
+        highlightedClass: null,
+        selectedClass: null
+    }
+
+    handleMouseEnterDisease(disease) {
+        this.setState({
+            highlightedDisease: disease,
+            highlightedClass: null
+        });
+    }
+
+    handleMouseLeaveDisease(disease) {
+        if (this.state.highlightedDisease &&
+            this.state.highlightedDisease.name === disease.name) {
+            this.setState({highlightedDisease: null});
+        }
+    }
+
+    handleSelectClass(cls) {
+        this.setState({
+            highlightedDisease: null,
+            highlightedClass: null,
+            selectedClass: cls
+        })
+    }
+
+    handleMouseEnterClass(cls) {
+        this.setState({
+            highlightedDisease: null,
+            highlightedClass: cls
+        });
+    }
+
+    handleMouseLeaveClass(cls) {
+        if (this.state.highlightedClass &&
+            this.state.highlightedClass === cls) {
+            this.setState({highlightedClass: null});
+        }
+    }
 
     render() {
         const chromosomes = [];
@@ -688,23 +676,39 @@ class App extends Component {
         for (let className in DISEASE_CLASSES) {
             diseases.push(<DiseaseClass
                 className={className}
-                key={className}
+                key={sanitizeName(className)}
                 layout={FINAL_LAYOUTS["DC_" + className]}
             />);
         }
 
         const diseaseGenes = DISEASEOME.map(
-            disease => <DiseaseGenes
-                disease={disease}
-                key={disease.name}
-                layout={FINAL_LAYOUTS["D_" + disease.name]}
-            />);
+            disease => {
+                if (this.state.highlightedDisease &&
+                    this.state.highlightedDisease.name === disease.name) {
+                    return <DiseaseGenes
+                        disease={disease}
+                        key={sanitizeName(disease.name)}
+                        layout={FINAL_LAYOUTS["D_" + disease.name]}
+                    />;
+                } else {
+                    return null;
+                }
+            });
 
         return (
             <div className="App" style={{display: "flex", height: "100%", width: "100%", position: "fixed"}}>
                 <Header />
                 <div className="diseasePane" key="diseaseList">
-                    <DiseaseList />
+                    <DiseaseList
+                        highlightedDisease={this.state.highlightedDisease}
+                        highlightedClass={this.state.highlightedClass}
+                        selectedClass={this.state.selectedClass}
+                        handleSelectClass={this.handleSelectClass.bind(this)}
+                        handleMouseEnterClass={this.handleMouseEnterClass.bind(this)}
+                        handleMouseLeaveClass={this.handleMouseLeaveClass.bind(this)}
+                        handleMouseEnterDisease={this.handleMouseEnterDisease.bind(this)}
+                        handleMouseLeaveDisease={this.handleMouseLeaveDisease.bind(this)}
+                    />
                 </div>
                 <svg viewBox="0 0 800 760" style={{height: "100%", margin: "auto"}} key="svg">
                     {chromosomes}
@@ -717,6 +721,36 @@ class App extends Component {
                 </svg>
             </div>
         );
+    }
+
+    componentDidUpdate() {
+        while (CSSSheet.cssRules.length > 0) {
+            if (CSSSheet.deleteRule) {
+                CSSSheet.deleteRule(0);
+            } else {
+                CSSSheet.removeRule(0);
+            }
+        }
+
+        if (this.state.highlightedDisease) {
+            const name = sanitizeName(this.state.highlightedDisease.name);
+            window.setTimeout(() => {
+                CSSSheet.insertRule(
+                    "g#DIS_" + name + " path "
+                    + "{ opacity: 0.9; stroke: rgba(0, 0, 0, 0); stroke-width: 20px; }",
+                    0);
+            }, 10);
+
+        }
+
+        if (this.state.highlightedClass || this.state.selectedClass) {
+            CSSSheet.insertRule("g#disease-groups path { opacity: 0.1; }", 0);
+
+            CSSSheet.insertRule(
+                "g#DGRP_" + sanitizeName(this.state.highlightedClass || this.state.selectedClass) + " path "
+                + "{ opacity: 1.0;  }",
+                1);
+        }
     }
 }
 
