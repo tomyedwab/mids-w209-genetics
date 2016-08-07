@@ -403,7 +403,8 @@ class Chromosome extends Component {
         const chromosome = this.props.chromosome;
         const quads = layout_to_paths(this.props.layout);
         return <g
-            id={"LOC" + chromosome.name}
+            id={"CHR_" + chromosome.name}
+            onClick={(e) => this.props.onSelectChromosome(e, chromosome.name)}
         >
             {quads}
             <text
@@ -561,8 +562,11 @@ class DiseaseList extends Component {
         });
     }
 
-    renderDiseasesByClass(className) {
-        const listElements = this.renderDiseases(DISEASE_CLASSES[className]);
+    renderDiseasesByClass(className, filter) {
+        const diseases = DISEASE_CLASSES[className]
+            .filter(disease => (filter === "") || disease.name.toLowerCase().indexOf(filter) >= 0);
+
+        const listElements = this.renderDiseases(diseases);
 
         return <div className="diseaseListWrapper">
             {this.renderTooltip()}
@@ -575,6 +579,37 @@ class DiseaseList extends Component {
                     Back
                 </button>
                 {className} diseases
+            </div>
+            <div className="heading columns">
+                <div className="col0">Prevalence</div>
+                <div className="col1">Disease</div>
+                <div className="col2"># of genes</div>
+            </div>
+            <ul className="diseaseList">
+                {listElements}
+            </ul>
+        </div>;
+    }
+
+    renderDiseasesByChromosome(chromosome, filter) {
+        const diseases = DISEASEOME.filter(
+            disease => (disease.genes
+                .filter(gene => gene.location[0] === chromosome)
+                .length > 0))
+            .filter(disease => (filter === "") || disease.name.toLowerCase().indexOf(filter) >= 0);
+
+        diseases.sort(prevalenceComparator);
+
+        const listElements = this.renderDiseases(diseases);
+
+        return <div className="diseaseListWrapper">
+            {this.renderTooltip()}
+            {this.renderSearchBox()}
+            <div
+                className="diseaseHeading"
+                style={{backgroundColor: "#666"}}
+            >
+                Diseases on chromosome {chromosome}
             </div>
             <div className="heading columns">
                 <div className="col0">Prevalence</div>
@@ -609,12 +644,17 @@ class DiseaseList extends Component {
     }
 
     render() {
+        if (this.props.selectedChromosome) {
+            return this.renderDiseasesByChromosome(
+                this.props.selectedChromosome, this.state.diseaseFilter);
+        }
+        if (this.props.selectedClass) {
+            return this.renderDiseasesByClass(
+                this.props.selectedClass, this.state.diseaseFilter);
+        }
         if (this.state.diseaseFilter !== "") {
             return this.renderDiseasesByFilter(
                 this.state.diseaseFilter.toLowerCase());
-        }
-        if (this.props.selectedClass) {
-            return this.renderDiseasesByClass(this.props.selectedClass);
         }
         return this.renderClasses();
     }
@@ -624,7 +664,8 @@ class App extends Component {
     state = {
         highlightedDisease: null,
         highlightedClass: null,
-        selectedClass: null
+        selectedClass: null,
+        selectedChromosome: null
     }
 
     handleMouseEnterDisease(disease) {
@@ -645,6 +686,7 @@ class App extends Component {
         this.setState({
             highlightedDisease: null,
             highlightedClass: null,
+            selectedChromosome: null,
             selectedClass: cls
         })
     }
@@ -663,6 +705,14 @@ class App extends Component {
         }
     }
 
+    handleSelectChromosome(e, chr) {
+        this.setState({
+            selectedChromosome: chr,
+            selectedClass: null
+        })
+        e.stopPropagation();
+    }
+
     render() {
         const chromosomes = [];
         CHROMOSOMES.forEach(chromosome => {
@@ -670,6 +720,7 @@ class App extends Component {
                 chromosome={chromosome}
                 key={chromosome.name}
                 layout={FINAL_LAYOUTS[chromosome.name]}
+                onSelectChromosome={this.handleSelectChromosome.bind(this)}
             />);
         });
         const diseases = [];
@@ -703,6 +754,7 @@ class App extends Component {
                         highlightedDisease={this.state.highlightedDisease}
                         highlightedClass={this.state.highlightedClass}
                         selectedClass={this.state.selectedClass}
+                        selectedChromosome={this.state.selectedChromosome}
                         handleSelectClass={this.handleSelectClass.bind(this)}
                         handleMouseEnterClass={this.handleMouseEnterClass.bind(this)}
                         handleMouseLeaveClass={this.handleMouseLeaveClass.bind(this)}
@@ -710,8 +762,15 @@ class App extends Component {
                         handleMouseLeaveDisease={this.handleMouseLeaveDisease.bind(this)}
                     />
                 </div>
-                <svg viewBox="0 0 800 760" style={{height: "100%", margin: "auto"}} key="svg">
-                    {chromosomes}
+                <svg
+                    key="svg"
+                    onClick={(e) => this.handleSelectChromosome(e, null)}
+                    style={{height: "100%", margin: "auto"}}
+                    viewBox="0 0 800 760"
+                >
+                    <g id="chromosomes">
+                        {chromosomes}
+                    </g>
                     <g id="disease-groups">
                         {diseases}
                     </g>
@@ -748,6 +807,15 @@ class App extends Component {
 
             CSSSheet.insertRule(
                 "g#DGRP_" + sanitizeName(this.state.highlightedClass || this.state.selectedClass) + " path "
+                + "{ opacity: 1.0;  }",
+                1);
+        }
+
+        if (this.state.selectedChromosome) {
+            CSSSheet.insertRule("g#chromosomes path { opacity: 0.1; }", 0);
+
+            CSSSheet.insertRule(
+                "g#CHR_" + this.state.selectedChromosome + " path "
                 + "{ opacity: 1.0;  }",
                 1);
         }
