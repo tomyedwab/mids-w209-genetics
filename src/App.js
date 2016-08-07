@@ -609,6 +609,9 @@ class DiseaseList extends Component {
                 className="diseaseHeading"
                 style={{backgroundColor: "#666"}}
             >
+                <button onClick={(e) => this.props.onSelectChromosome(e, null)}>
+                    Back
+                </button>
                 Diseases on chromosome {chromosome}
             </div>
             <div className="heading columns">
@@ -760,6 +763,7 @@ class App extends Component {
                         handleMouseLeaveClass={this.handleMouseLeaveClass.bind(this)}
                         handleMouseEnterDisease={this.handleMouseEnterDisease.bind(this)}
                         handleMouseLeaveDisease={this.handleMouseLeaveDisease.bind(this)}
+                        onSelectChromosome={this.handleSelectChromosome.bind(this)}
                     />
                 </div>
                 <svg
