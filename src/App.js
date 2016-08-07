@@ -498,10 +498,12 @@ class DiseaseList extends Component {
             const style = {
                 borderLeft: "32px solid " + color
             };
+            let clickText = <span />;
             if (this.state.highlightedClass &&
                 this.state.highlightedClass === className) {
                 style.backgroundColor = color;
                 style.color = "#fff";
+                clickText = <span className="click">(See diseases...)</span>;
             }
             listElements.push(<li
                 key={className}
@@ -512,7 +514,7 @@ class DiseaseList extends Component {
                 onClick={() => this.handleSelectClass(className)}
             >
                 {/* Somehow in the minified code, className gets mangled? */}
-                <div className="col1">{"" + className}</div>
+                <div className="col1">{"" + className} {clickText}</div>
                 <div className="col2">{DISEASE_CLASSES[className].length}</div>
             </li>);
         }
@@ -635,11 +637,13 @@ class DiseaseList extends Component {
                 CSSSheet.removeRule(0);
             }
         }
-        const namesToHighlight = [];
 
         if (this.state.highlightedDisease) {
-            namesToHighlight.push(
-                sanitizeName(this.state.highlightedDisease.name));
+            const name = sanitizeName(this.state.highlightedDisease.name);
+            CSSSheet.insertRule(
+                "g#DIS_" + name + " path "
+                + "{ opacity: 0.9; stroke: rgba(0, 0, 0, 0); stroke-width: 50px; }",
+                0);
 
         } else if (this.state.highlightedClass) {
             CSSSheet.insertRule("g#disease-groups path { opacity: 0.1; }", 0);
@@ -649,17 +653,6 @@ class DiseaseList extends Component {
                 + "{ opacity: 1.0;  }",
                 1);
         }
-
-        namesToHighlight.forEach(name => {
-            CSSSheet.insertRule(
-                "g#DIS_" + name + " path "
-                + "{ opacity: 0.9; stroke-width: 4; stroke-linecap: round; }",
-                0);
-            CSSSheet.insertRule(
-                "g#DISG_" + name + " path "
-                + "{ opacity: 0.9;  }",
-                0);
-        });
     }
 }
 

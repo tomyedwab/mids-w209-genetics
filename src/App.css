@@ -2,9 +2,12 @@ g#disease-groups path {
     opacity: 0.5;
     transition: opacity 0.5s;
 }
+
 g#disease-genes path {
+    stroke: rgba(0, 0, 0, 1);
+    stroke-width: 0px;
     opacity: 0;
-    transition: opacity 0.5s;
+    transition: opacity 0.5s, stroke 1s, stroke-width 1s;
 }
 
 #root {
@@ -118,6 +121,11 @@ g#disease-genes path {
 }
 .diseasePane .col1 {
     flex: 1 0 0;
+}
+.diseasePane .col1 .click {
+    font-size: 12px;
+    font-style: italic;
+    margin-left: 8px;
 }
 .diseasePane .col2 {
     flex: 0 0 110px;
