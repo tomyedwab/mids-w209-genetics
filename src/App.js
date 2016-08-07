@@ -491,6 +491,18 @@ class DiseaseList extends Component {
         </div>;
     }
 
+    renderTooltip() {
+        if (this.state.highlightedDisease &&
+            this.state.highlightedDisease.description.replace(" ", "") !== "") {
+            return <div className="tooltip" style={{opacity: 1.0}}>
+                {this.state.highlightedDisease.description}
+                <span className="attribution">[From Wikipedia]</span>
+            </div>;
+        } else {
+            return <div className="tooltip" />
+        }
+    }
+
     renderClasses() {
         const listElements = [];
         for (let className in DISEASE_CLASSES) {
@@ -577,6 +589,7 @@ class DiseaseList extends Component {
         const listElements = this.renderDiseases(DISEASE_CLASSES[className]);
 
         return <div className="diseaseListWrapper">
+            {this.renderTooltip()}
             {this.renderSearchBox()}
             <div
                 className="diseaseHeading"
@@ -606,6 +619,7 @@ class DiseaseList extends Component {
         const listElements = this.renderDiseases(diseases);
 
         return <div className="diseaseListWrapper">
+            {this.renderTooltip()}
             {this.renderSearchBox()}
             <div className="heading columns">
                 <div className="col0">Prevalence</div>

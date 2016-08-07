@@ -102,7 +102,21 @@ with open("diseaseome_desc.csv", "rU") as csvin:
             print "diseaseome_desc refers to invalid OMIM ID %s" % id
             continue
 
-        data[id]["description"] = row[8].decode('utf-8','ignore').encode("utf-8")
+        desc = row[8]
+        if "This is a redirect" not in desc:
+            if len(desc) > 600:
+                words = desc.split(" ")
+                cur_length = 0
+                last_idx = 0
+                for idx, word in enumerate(words):
+                    cur_length += len(word) + 1
+                    if cur_length > 600:
+                        last_idx = idx
+                        break
+
+                desc = " ".join(words[0:last_idx]) + "..."
+
+            data[id]["description"] = desc
 
 with open("../src/diseaseome.js", "w") as out:
     out.write("export const DISEASEOME = %s;" % json.dumps(data.values()))
