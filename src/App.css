@@ -24,6 +24,7 @@ g#disease-genes path {
     overflow: hidden;
     padding: 16px 36px 16px 16px;
     position: absolute;
+    text-shadow: -3px -3px 4px #fff, -3px 3px 4px #fff, 3px -3px 4px #fff, 3px 3px 4px #fff;
     z-index: 10;
 }
 .header.open {
@@ -148,12 +149,16 @@ g#disease-genes path {
 .diseasePane .col1 {
     flex: 1 0 0;
 }
-.diseasePane .col1 .click {
+.diseasePane .col2 {
+    flex: 0 1 110px;
+    text-align: right;
+}
+.diseasePane .columns.selected .col1 .name {
+    text-decoration: underline;
+}
+
+.diseasePane .columns.selected .col1 .click {
     font-size: 12px;
     font-style: italic;
     margin-left: 8px;
-}
-.diseasePane .col2 {
-    flex: 0 0 110px;
-    text-align: right;
 }

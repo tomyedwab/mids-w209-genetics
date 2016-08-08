@@ -232,7 +232,7 @@ function layout_disease_class(layouts, layout, disease, offset) {
     };
 }
 
-function layout_disease(layouts, disease, offset) {
+function layout_disease(layouts, disease, chromosome) {
     const color = COLOR_TABLE[disease.className];
     const layout = {
         quads: {},
@@ -245,18 +245,23 @@ function layout_disease(layouts, disease, offset) {
     layout.quads[color] = layout.quads[color] || [];
     for (let i = 0; i < disease.genes.length; i++) {
         const location = disease.genes[i].location;
-        const locationName = location.slice(0, 3).join("");
-        if (layouts[location[0]] &&
-            layouts[location[0]].map[locationName]) {
-            layouts[location[0]].map[locationName].forEach(quadInfo => {
-                const quad = layouts[location[0]].quads[quadInfo[0]][quadInfo[1]];
-                layout.quads[color].push(quad.map(point => [point[0] * 1.2, point[1]]));
-            })
-        } else {
-            console.log("Couldn't find location", locationName);
+        if (location[0] === chromosome) {
+            const locationName = location.slice(0, 3).join("");
+            if (layouts[location[0]] &&
+                layouts[location[0]].map[locationName]) {
+                layouts[location[0]].map[locationName].forEach(quadInfo => {
+                    const quad = layouts[location[0]].quads[quadInfo[0]][quadInfo[1]];
+                    layout.quads[color].push(quad.map(point => [point[0] * 1.2, point[1]]));
+                })
+            } else {
+                console.log("Couldn't find location", locationName);
+            }
         }
     };
-    return layout;
+    if (layout.quads[color].length > 0) {
+        return layout;
+    }
+    return null;
 }
 
 function layout_transform(layouts, fn) {
@@ -354,7 +359,12 @@ const FINAL_LAYOUTS = {};
             offset += 1.6;
         }
         layout_disease_class(FINAL_LAYOUTS, FINAL_LAYOUTS["DC_" + disease.className], disease, offset)
-        FINAL_LAYOUTS["D_" + disease.name] = layout_disease(FINAL_LAYOUTS, disease)
+        CHROMOSOMES.forEach(chromosome => {
+            const layout = layout_disease(FINAL_LAYOUTS, disease, chromosome.name);
+            if (layout) {
+                FINAL_LAYOUTS["D_" + sanitizeName(disease.name) + "_" + chromosome.name] = layout;
+            }
+        });
     });
 
     layout_radial(FINAL_LAYOUTS, 380.0, 360.0, 10);
@@ -377,16 +387,49 @@ class Header extends Component {
             </button>
             <div className="title">Genetics and Disease</div>
             <div className="description">
-                <p>The human genome includes 24 distinct chromosomes, comprising
-                22 autosomal pairs and 2 sex-linked, X/Y chromsomes. Although
-                there is an estimated 20-25,000 protein-encoding genes in the
-                genome, just over 15000 genes have been mapped to chromosome
-                locations, with 12,000 of those genes linked to over 7000
-                genetic disorders.</p>
-                <p>This interactive visualization displays the chromosome
-                locations of the genes responsible for the most common
-                genetic disorders.</p>
-                <p><i>Created by Ying Chan, Marcus DeMaster, Kevin McLanahan and Tom Yedwab.</i></p>
+                <p>The human genome includes 24 distinct chromosomes,
+                comprising 22 autosomal pairs and 2 sex-linked, X/Y chromosomes.
+                Although there is an estimated 23,000 protein-encoding genes in
+                the genome, only 16,000 genes have been mapped to chromosome
+                locations, with around 4,000 of those genes linked to almost
+                6,000 genetic diseases.</p>
+
+                <p>This interactive visualization is an educational tool
+                illustrating the human genome and the most common genetic
+                diseases. Click on a disease class to expand to a list of
+                diseases in that class. Click on individual chromosomes to view
+                only diseases associated with that chromosome. Hover over
+                disease classes and individual diseases to highlight associated,
+                color-coded gene locations and view supporting Wikipedia
+                information.</p>
+
+                <p><i>Created by Ying Chan, Marcus DeMaster, Kevin McLanahan and
+                Tom Yedwab.</i></p>
+
+                <p><strong>Data Sources and Citations:</strong></p>
+
+                <ul>
+                <li>OMIM Gene Map Statistics. (2016). Omim.org.
+                Retrieved 7 August 2016, from{" "}
+                <a href="https://omim.org/statistics/geneMap" target="_">
+                https://omim.org/statistics/geneMap</a></li>
+
+                <li>ApiHelp. (2016). Wikipedia. Retrieved 7 August 2016, from{" "}
+                <a href="https://en.wikipedia.org/w/api.php" target="_">
+                https://en.wikipedia.org/w/api.php</a></li>
+
+                <li>Barabasilab. (2016). Barabasilab.com. Retrieved 7
+                August 2016, from{" "}
+                <a href="http://www.barabasilab.com/pubs/CCNR-ALB_Publications/200705-14_PNAS-HumanDisease/Suppl/supplementary_tableS1.txt" target="_">
+                http://www.barabasilab.com/pubs/CCNR-ALB_Publications/200705-14_PNAS-HumanDisease/Suppl/supplementary_tableS1.txt
+                </a></li>
+
+                <li>Supporting Information. (2016). Pnas.org. Retrieved 7 August
+                2016, from{" "}
+                <a href="http://www.pnas.org/content/suppl/2010/03/16/0802208105.DC1" target="_">
+                http://www.pnas.org/content/suppl/2010/03/16/0802208105.DC1
+                </a></li>
+                </ul>
             </div>
             <button
                 className="hideButton"
@@ -441,8 +484,17 @@ class DiseaseClass extends Component {
 
 class DiseaseGenes extends Component {
     render() {
+        const paths = [];
+        CHROMOSOMES.forEach(chromosome => {
+            const layout = this.props.layouts["D_" + sanitizeName(this.props.disease.name) + "_" + chromosome.name];
+            if (layout &&
+                (!this.props.selectedChromosome ||
+                 this.props.selectedChromosome === chromosome.name)) {
+                paths.push(layout_to_paths(layout));
+            }
+        });
         return <g id={"DIS_" + sanitizeName(this.props.disease.name)}>
-            {layout_to_paths(this.props.layout)}
+            {paths}
         </g>;
     }
 
@@ -488,22 +540,24 @@ class DiseaseList extends Component {
                 borderLeft: "32px solid " + color
             };
             let clickText = <span />;
+            let classes = "columns";
             if (this.props.highlightedClass &&
                 this.props.highlightedClass === className) {
                 style.backgroundColor = color;
                 style.color = "#fff";
-                clickText = <span className="click">(See diseases...)</span>;
+                clickText = <span className="click">➠</span>;
+                classes += " selected";
             }
             listElements.push(<li
                 key={sanitizeName(className)}
-                className="columns"
+                className={classes}
                 style={style}
                 onMouseEnter={() => this.props.handleMouseEnterClass(className)}
                 onMouseLeave={() => this.props.handleMouseLeaveClass(className)}
                 onClick={() => this.props.handleSelectClass(className)}
             >
                 {/* Somehow in the minified code, className gets mangled? */}
-                <div className="col1">{"" + className} {clickText}</div>
+                <div className="col1"><span className="name">{"" + className}</span>{clickText}</div>
                 <div className="col2">{DISEASE_CLASSES[className].length}</div>
             </li>);
         }
@@ -537,6 +591,13 @@ class DiseaseList extends Component {
                 style.color = "#fff";
                 barColor = "#fff";
             }
+
+            const geneCount = disease.genes
+                .filter(gene => (
+                    !this.props.selectedChromosome ||
+                    this.props.selectedChromosome === gene.location[0]))
+                .length;
+
             return <li
                 key={sanitizeName(disease.name)}
                 className="columns"
@@ -557,7 +618,7 @@ class DiseaseList extends Component {
                     {prev}
                 </div>
                 <div className="col1">{disease.name}</div>
-                <div className="col2">{disease.genes.length}</div>
+                <div className="col2">{geneCount}</div>
             </li>;
         });
     }
@@ -742,7 +803,8 @@ class App extends Component {
                     return <DiseaseGenes
                         disease={disease}
                         key={sanitizeName(disease.name)}
-                        layout={FINAL_LAYOUTS["D_" + disease.name]}
+                        layouts={FINAL_LAYOUTS}
+                        selectedChromosome={this.state.selectedChromosome}
                     />;
                 } else {
                     return null;
