@@ -448,6 +448,8 @@ class Chromosome extends Component {
         return <g
             id={"CHR_" + chromosome.name}
             onClick={(e) => this.props.onSelectChromosome(e, chromosome.name)}
+            onMouseEnter={() => this.props.onMouseEnterChromosome(chromosome.name)}
+            onMouseLeave={() => this.props.onMouseLeaveChromosome(chromosome.name)}
         >
             {quads}
             <text
@@ -728,12 +730,14 @@ class App extends Component {
     state = {
         highlightedDisease: null,
         highlightedClass: null,
+        highlightedChromosome: null,
         selectedClass: null,
         selectedChromosome: null
     }
 
     handleMouseEnterDisease(disease) {
         this.setState({
+            highlightedChromosome: null,
             highlightedDisease: disease,
             highlightedClass: null
         });
@@ -757,6 +761,7 @@ class App extends Component {
 
     handleMouseEnterClass(cls) {
         this.setState({
+            highlightedChromosome: null,
             highlightedDisease: null,
             highlightedClass: cls
         });
@@ -777,6 +782,22 @@ class App extends Component {
         e.stopPropagation();
     }
 
+    handleMouseEnterChromosome(chr) {
+        this.setState({
+            highlightedChromosome: chr,
+            highlightedDisease: null,
+            highlightedClass: null
+        })
+    }
+
+    handleMouseLeaveChromosome(chr) {
+        if (this.state.highlightedChromosome === chr) {
+            this.setState({
+                highlightedChromosome: null
+            });
+        }
+    }
+
     render() {
         const chromosomes = [];
         CHROMOSOMES.forEach(chromosome => {
@@ -785,6 +806,8 @@ class App extends Component {
                 key={chromosome.name}
                 layout={FINAL_LAYOUTS[chromosome.name]}
                 onSelectChromosome={this.handleSelectChromosome.bind(this)}
+                onMouseEnterChromosome={this.handleMouseEnterChromosome.bind(this)}
+                onMouseLeaveChromosome={this.handleMouseLeaveChromosome.bind(this)}
             />);
         });
         const diseases = [];
@@ -884,6 +907,11 @@ class App extends Component {
                 "g#CHR_" + this.state.selectedChromosome + " path "
                 + "{ opacity: 1.0;  }",
                 1);
+                
+        } else if (this.state.highlightedChromosome) {
+            CSSSheet.insertRule("g#CHR_" + this.state.highlightedChromosome + " path "
+                + "{ stroke: rgba(0, 0, 0, 0.4); stroke-width: 2px; }",
+                0);
         }
     }
 }
